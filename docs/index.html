@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>vue-virtualize · 10 万条数据流畅滚动的虚拟列表</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "vue": "https://cdn.jsdelivr.net/npm/vue@3.5.13/dist/vue.esm-browser.js",
+      "vue-virtualize": "https://cdn.jsdelivr.net/npm/vue-virtualize@1.0.1/dist/vue-virtualize.js"
+    }
+  }
+  </script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vue-virtualize@1.0.1/dist/vue-virtualize.css" />
+  <style>
+    :root { --bg:#f7f8fa; --card:#fff; --border:#e5e7eb; --text:#1f2329; --muted:#6b7280;
+      --accent:#3b82f6; --green:#10b981; --code-bg:#f3f4f6; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+      background:var(--bg); color:var(--text); padding:24px; }
+    .wrap { max-width:760px; margin:0 auto; }
+    h1 { font-size:22px; margin:0 0 4px; }
+    .sub { color:var(--muted); font-size:14px; margin-bottom:24px; }
+    .sub code { background:var(--code-bg); padding:2px 6px; border-radius:4px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px;
+      padding:20px; margin-bottom:20px; }
+    .card h2 { font-size:16px; margin:0 0 12px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+    button { border:1px solid var(--border); background:#fff; color:var(--text);
+      padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px; }
+    button:hover { border-color:var(--accent); color:var(--accent); }
+    button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+    button.primary:hover { opacity:.9; }
+    .stats { display:flex; gap:24px; flex-wrap:wrap; margin-bottom:16px; }
+    .stat { background:var(--code-bg); border-radius:10px; padding:14px 18px; flex:1; min-width:140px; }
+    .stat .num { font-size:26px; font-weight:700; }
+    .stat .num.green { color:var(--green); }
+    .stat .label { font-size:12px; color:var(--muted); margin-top:2px; }
+    .list-wrap { border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+    .list-item { height:40px; line-height:40px; padding:0 16px; border-bottom:1px solid #f0f1f3;
+      display:flex; gap:12px; align-items:center; font-size:14px; }
+    .list-item .idx { color:var(--muted); font-size:12px; min-width:56px; }
+    .list-item:nth-child(odd) { background:#fafbfc; }
+    .tip { font-size:13px; color:var(--muted); line-height:1.8; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>vue-virtualize</h1>
+    <p class="sub">固定高度虚拟列表：只渲染可视区，性能与数据量解耦。安装：<code>npm i vue-virtualize</code></p>
+
+    <div id="app">
+      <div class="card">
+        <h2>100,000 条数据，DOM 节点数恒定</h2>
+        <div class="stats">
+          <div class="stat"><div class="num">{{ total }}</div><div class="label">数据总量</div></div>
+          <div class="stat"><div class="num green">{{ rendered }}</div><div class="label">实际渲染 DOM 节点（≈ 视口 + 缓冲）</div></div>
+        </div>
+        <div class="row">
+          <button class="primary" @click="jumpCenter">跳到第 50000 条（center）</button>
+          <button @click="scrollTop">回到顶部</button>
+          <button @click="scrollBottom">滚到底部</button>
+          <button @click="jumpEnd">跳到第 99999 条（end）</button>
+        </div>
+        <div class="list-wrap">
+          <VirtualList ref="listRef" :items="list" :item-size="40" height="400px" :buffer="6" key-field="id" @scroll="onScroll">
+            <template #default="{ item, index }">
+              <div class="list-item">
+                <span class="idx">#{{ item.id }}</span>
+                <span>{{ item.text }}</span>
+              </div>
+            </template>
+          </VirtualList>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>原理</h2>
+        <p class="tip">
+          外层可滚动容器 + 内部一个总高度为 <code>100000 × 40px</code> 的撑高元素（spacer），滚动时用 <code>scrollTop / itemSize</code> 算出起止索引，
+          只渲染 <code>[start, end]</code> 区间（上下各多渲染 <code>buffer</code> 项防白屏），每项绝对定位到正确偏移。
+          所以无论多少条数据，DOM 节点始终只有几十个，滚动掉帧问题从根上解决。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createApp, ref, onMounted, onBeforeUnmount } from 'vue'
+    import { VirtualList } from 'vue-virtualize'
+
+    createApp({
+      components: { VirtualList },
+      setup() {
+        const total = 100000
+        const list = ref(Array.from({ length: total }, (_, i) => ({ id: i, text: `第 ${i} 条虚拟列表数据` })))
+        const listRef = ref(null)
+        const rendered = ref(0)
+
+        let observer
+        function countNodes() {
+          const el = document.querySelector('.vv-list__spacer')
+          if (el) rendered.value = el.querySelectorAll('.vv-list__item').length
+        }
+
+        onMounted(() => {
+          countNodes()
+          observer = new MutationObserver(countNodes)
+          const spacer = document.querySelector('.vv-list__spacer')
+          if (spacer) observer.observe(spacer, { childList: true })
+        })
+        onBeforeUnmount(() => observer?.disconnect())
+
+        const onScroll = () => countNodes()
+
+        return {
+          list, listRef, total, rendered, onScroll,
+          jumpCenter: () => listRef.value?.scrollToIndex(50000, 'center'),
+          jumpEnd: () => listRef.value?.scrollToIndex(99999, 'end'),
+          scrollTop: () => listRef.value?.scrollToTop(),
+          scrollBottom: () => listRef.value?.scrollToBottom(),
+        }
+      },
+    }).mount('#app')
+  </script>
+</body>
+</html>
