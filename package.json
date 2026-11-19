@@ -1,6 +1,6 @@
 {
   "name": "vue-virtualize",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Vue3 虚拟列表组件：固定高度长列表只渲染可视区，支持滚动缓冲与定位滚动，零依赖、全 TypeScript",
   "type": "module",
   "files": [
