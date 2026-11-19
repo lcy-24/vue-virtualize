@@ -1,0 +1,51 @@
+{
+  "name": "vue-virtualize",
+  "version": "1.0.0",
+  "description": "Vue3 虚拟列表组件：固定高度长列表只渲染可视区，支持滚动缓冲与定位滚动，零依赖、全 TypeScript",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/vue-virtualize.umd.cjs",
+  "module": "./dist/vue-virtualize.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/vue-virtualize.js",
+      "require": "./dist/vue-virtualize.umd.cjs"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "vite build && vue-tsc -p tsconfig.build.json",
+    "typecheck": "vue-tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "vue3",
+    "vue",
+    "virtual-list",
+    "virtual-scroll",
+    "virtualize",
+    "long-list",
+    "performance",
+    "typescript"
+  ],
+  "author": "jackiechan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lcy-24/vue-virtualize.git"
+  },
+  "peerDependencies": {
+    "vue": ">=3.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.7",
+    "vue": "^3.5.13",
+    "vue-tsc": "^2.1.10"
+  }
+}
